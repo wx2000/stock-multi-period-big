@@ -1,0 +1,26 @@
+# ── 敏感配置（含 Webhook 密钥，绝对不能推送）──
+config.yaml
+
+# ── 本地输出（PNG 不推送，HTML 报告由 git_push.py 复制到 docs/）──
+output/*.png
+output/report_*.html
+output/
+
+# ── Python 编译缓存 ──
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# ── 系统文件 ──
+.DS_Store
+Thumbs.db
+
+# ── 编辑器 ──
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ── 日志 ──
+*.log

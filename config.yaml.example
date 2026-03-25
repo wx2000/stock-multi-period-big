@@ -1,0 +1,46 @@
+# ══════════════════════════════════════════════════════════════════
+#  多周期K线图 · 通知配置文件
+#  复制本文件为 config.yaml，填入你的 Webhook URL，即可启用发送功能
+# ══════════════════════════════════════════════════════════════════
+
+# ─────────────────────────────────────────────
+#  企业微信群机器人
+#  在群聊里添加机器人，复制 Webhook 地址粘贴到下面
+#  文档: https://developer.work.weixin.qq.com/document/path/91770
+# ─────────────────────────────────────────────
+wecom:
+  enabled: false
+  webhook_url: "https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=你的KEY"
+
+
+# ─────────────────────────────────────────────
+#  飞书群机器人（Webhook 方式，最简单）
+#  在飞书群里添加自定义机器人，复制 Webhook 地址粘贴到下面
+#  文档: https://open.feishu.cn/document/client-docs/bot-v3/add-custom-bot
+#  注意：此方式发送的图片以卡片+本地路径形式展示（飞书Webhook限制）
+# ─────────────────────────────────────────────
+feishu:
+  enabled: false
+  webhook_url: "https://open.feishu.cn/open-apis/bot/v2/hook/你的HOOK_ID"
+
+
+# ─────────────────────────────────────────────
+#  飞书自建应用（支持真正发送图片到群，配置稍复杂）
+#  1. 在飞书开放平台创建企业自建应用
+#  2. 开通"发送消息"和"上传图片"权限
+#  3. 将机器人加入目标群，获取群 chat_id
+#  文档: https://open.feishu.cn/document/home/develop-a-bot-in-5-minutes
+# ─────────────────────────────────────────────
+feishu_app:
+  enabled: false
+  app_id: "cli_xxxxxxxxxxxxxxxx"
+  app_secret: "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+  chat_id: "oc_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+
+
+# ─────────────────────────────────────────────
+#  图表生成设置（可选覆盖默认值）
+# ─────────────────────────────────────────────
+chart:
+  output_dir: "output"      # 图片输出目录
+  dpi: 150                  # 图片分辨率（越高越清晰，文件也越大）
