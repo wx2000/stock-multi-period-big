@@ -1,5 +1,5 @@
 """
-主入口脚本
+主入口脚本 · v1.1
 支持命令行参数、文件输入、交互模式
 支持生成后自动发送到企业微信/飞书
 支持 --send_only 直接复用已有图片发送，不重新拉数据
@@ -154,28 +154,27 @@ def _make_stub_data(img_path: str) -> dict:
 
 
 def _do_send(notifiers, saved_paths, all_data, html_path):
-    """统一发送逻辑（正常模式和 send_only 模式共用）"""
+    """统一发送逻辑：仅发送 GitHub Pages 链接通知"""
+    if not html_path:
+        return
+
+    pages_url = "https://stock-multi-period-big.pages.dev/"
+    import datetime
+    now = datetime.datetime.now().strftime("%Y-%m-%d %H:%M")
+    msg = (
+        f"📈 多周期K线图报告已更新\n"
+        f"生成时间：{now}\n"
+        f"共 {len(saved_paths)} 只股票\n"
+        f"点击查看：{pages_url}"
+    )
+
     print("\n" + "=" * 50)
     print("正在发送通知...")
-
-    send_count    = min(len(all_data), len(saved_paths))
-    data_to_send  = all_data[:send_count]
-    paths_to_send = saved_paths[:send_count]
-
     for notifier_name, notifier in notifiers:
         print(f"\n[{notifier_name}] 发送中...")
         try:
-            ok = notifier.send_batch(data_to_send, paths_to_send)
-            print(f"[{notifier_name}] OK 成功发送 {ok}/{send_count} 只")
-            if html_path:
-                try:
-                    notifier.send_text(
-                        f"[完整报告] 含滚轮缩放查看\n"
-                        f"文件: {os.path.basename(html_path)}\n"
-                        f"路径: {html_path}"
-                    )
-                except Exception:
-                    pass
+            notifier.send_text(msg)
+            print(f"[{notifier_name}] OK 通知发送成功")
         except Exception as e:
             print(f"[{notifier_name}] FAIL 发送失败: {e}")
 
@@ -231,13 +230,13 @@ def main():
     # ── 加载通知配置 ──────────────────────────────────────────
     config    = _load_config(args.config)
     notifiers = []
-    need_notify = args.notify or args.wecom or args.feishu or (args.send_only is not None)
-    if need_notify:
-        notifiers = _build_notifiers(args, config)
-        if notifiers:
-            print(f"[通知] 已启用渠道: {[n for n, _ in notifiers]}")
-        else:
-            print("[通知] 未找到有效的通知配置")
+    # 默认始终尝试加载通知配置（config.yaml 里 enabled: true 即生效）
+    # 命令行 --wecom / --feishu 可额外覆盖或补充
+    notifiers = _build_notifiers(args, config)
+    if notifiers:
+        print(f"[通知] 已启用渠道: {[n for n, _ in notifiers]}")
+    elif args.notify or args.wecom or args.feishu:
+        print("[通知] 未找到有效的通知配置")
 
     # ══════════════════════════════════════════════════════════
     #  --send_only 模式：跳过数据获取，直接发送
@@ -334,7 +333,15 @@ def main():
     if saved_paths:
         try:
             from report_generator import generate_html_report
-            html_path = generate_html_report(saved_paths, all_data, args.output)
+            from market_summary import fetch_market_summary
+            print("\n[大盘] 正在获取市场概况数据...")
+            market_data = fetch_market_summary()
+            if market_data.get("error"):
+                print(f"[大盘] 获取失败（不影响报告生成）: {market_data['error']}")
+            else:
+                print(f"[大盘] 获取成功：全市场成交额 {market_data['market_total_amount']}，"
+                      f"上涨 {market_data['total_up']} 家，下跌 {market_data['total_down']} 家")
+            html_path = generate_html_report(saved_paths, all_data, args.output, market_data)
             print(f"\n[报告] HTML 报告: {html_path}")
         except Exception as e:
             print(f"[警告] HTML 报告生成失败: {e}")

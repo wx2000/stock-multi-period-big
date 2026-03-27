@@ -88,12 +88,13 @@ MA_COLORS = {
     60:  "#ffffff",
     120: "#aaaaaa",
     250: "#666666",
+    260: "#aaaaff",   # 淡蓝色，日线 MA260
 }
 
 # 每个周期显示的均线
 PERIOD_MAS = {
     "分时": [],          # 分时不画均线（只画均价线）
-    "日线": [5, 10, 20, 60, 120, 250],
+    "日线": [260],
     "周线": [5, 10, 20, 60],
     "月线": [5, 10, 20, 60],
     "季线": [4, 8, 12],
@@ -177,7 +178,7 @@ def _plot_period(fig, outer_gs_cell, df: pd.DataFrame, period: str, is_minute: b
         return
 
     # 只取最近 N 条（避免太密）
-    MAX_BARS = {"分时": 240, "日线": 120, "周线": 100, "月线": 60, "季线": 40, "年线": 20}
+    MAX_BARS = {"分时": 240, "日线": 300, "周线": 100, "月线": 60, "季线": 40, "年线": 20}
     n = MAX_BARS.get(period, 120)
     df = df.tail(n).copy()
 
@@ -215,12 +216,36 @@ def _plot_period(fig, outer_gs_cell, df: pd.DataFrame, period: str, is_minute: b
 
         # 均线
         ma_list = PERIOD_MAS.get(period, [5, 10, 20])
+        ma260_last = None   # 记录 MA260 末值，供偏差值计算
         for ma_n in ma_list:
             if len(df) >= ma_n:
                 ma_vals = calc_ma(df["close"], ma_n).values
                 color = MA_COLORS.get(ma_n, "#888888")
                 ax_k.plot(x, ma_vals, color=color, linewidth=0.6,
                           label=f"MA{ma_n}", alpha=0.9)
+                if ma_n == 260:
+                    ma260_last = ma_vals[-1]
+
+        # ── 日线：左上角一行显示 MA260 值 + 偏差值 ───────────────
+        if period == "日线" and ma260_last is not None and ma260_last != 0:
+            last_close = closes[-1]
+            deviation  = last_close / ma260_last - 1
+            dev_pct    = deviation * 100
+            dev_color  = C_UP if deviation >= 0 else C_DOWN
+            dev_sign   = "+" if deviation >= 0 else ""
+            ma_text    = f"MA260={format_price(ma260_last)}"
+            dev_text   = f"  偏差={dev_sign}{dev_pct:.1f}%"
+            # MA260 值用均线色，偏差值用涨跌色，分两段 text 紧排
+            ax_k.text(0.01, 0.97, ma_text,
+                      transform=ax_k.transAxes,
+                      color=MA_COLORS[260], fontsize=7,
+                      ha="left", va="top", fontweight="bold")
+            # 估算 ma_text 宽度偏移（以 axes 比例近似）
+            offset_x = 0.01 + len(ma_text) * 0.013
+            ax_k.text(offset_x, 0.97, dev_text,
+                      transform=ax_k.transAxes,
+                      color=dev_color, fontsize=7,
+                      ha="left", va="top", fontweight="bold")
 
     # ── 成交量 ────────────────────────────────────────────────
     vol_col = "volume" if "volume" in df.columns else "price"
@@ -271,8 +296,8 @@ def _plot_period(fig, outer_gs_cell, df: pd.DataFrame, period: str, is_minute: b
               color="#aaddff", fontsize=8, ha="right", va="top",
               fontweight="bold")
 
-    # ── 均线图例（左上）──────────────────────────────────────
-    if not is_minute and len(PERIOD_MAS.get(period, [])) > 0:
+    # ── 均线图例（左上，日线除外）────────────────────────────
+    if not is_minute and period != "日线" and len(PERIOD_MAS.get(period, [])) > 0:
         handles, labels = ax_k.get_legend_handles_labels()
         if handles:
             leg = ax_k.legend(handles[:6], labels[:6], loc="upper left",
@@ -344,13 +369,43 @@ def generate_chart(stock_data: dict, output_dir: str = None) -> str:
         top=0.93, bottom=0.03,
     )
 
+    # ── 计算日线 MA260 偏差值，用于顶部标题 ──────────────────
+    daily_df = periods.get("日线", pd.DataFrame())
+    dev_suffix = ""
+    if not daily_df.empty and len(daily_df) >= 20:
+        ma260_series = calc_ma(daily_df["close"], 260)
+        last_close   = daily_df["close"].iloc[-1]
+        last_ma260   = ma260_series.iloc[-1]
+        if last_ma260 and last_ma260 != 0:
+            deviation  = last_close / last_ma260 - 1
+            dev_sign   = "+" if deviation >= 0 else ""
+            dev_color  = C_UP if deviation >= 0 else C_DOWN
+            dev_suffix = f"{dev_sign}{deviation * 100:.1f}%"
+
     # ── 顶部标题 ──────────────────────────────────────────────
-    fig.text(
-        0.5, 0.97,
-        f"{name}  {display}",
-        ha="center", va="top",
-        color=C_TITLE, fontsize=16, fontweight="bold",
-    )
+    # MA260 偏差值（左侧）
+
+    if dev_suffix:
+        # 股票名右侧紧跟偏差值：名称居中稍偏左，偏差值居中稍偏右
+        fig.text(
+            0.49, 0.97,
+            f"{name}  {display}  ",
+            ha="right", va="top",
+            color=C_TITLE, fontsize=16, fontweight="bold",
+        )
+        fig.text(
+            0.49, 0.97,
+            dev_suffix,
+            ha="left", va="top",
+            color=dev_color, fontsize=14, fontweight="bold",
+        )
+    else:
+        fig.text(
+            0.5, 0.97,
+            f"{name}  {display}",
+            ha="center", va="top",
+            color=C_TITLE, fontsize=16, fontweight="bold",
+        )
     fig.text(
         0.98, 0.97,
         now_str,

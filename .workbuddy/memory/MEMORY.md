@@ -23,6 +23,7 @@
 - 季线：由月线 groupby("Q") 聚合（东方财富无直接季线接口）
 - 企业微信图片：自动检测>2MB时用 Pillow 压缩为 JPEG 发送
 - 飞书 Webhook 限制：不支持直接发图，发卡片消息（含本地路径）；真正发图需 FeishuApp 自建应用模式
+- 日线均线配置（2026-03-27）：只保留 MA260（淡蓝色 #aaaaff），MAX_BARS=300；K线区左上角显示偏差值 = 收盘/MA260-1（百分比，涨红跌绿）
 
 ## 使用方式
 ```bash
@@ -46,9 +47,10 @@ python main.py --notify
 - 飞书自建应用直接发图片（需 app_id + app_secret + chat_id）
 - 定时任务（cron/任务计划）自动运行
 
-## GitHub Pages 托管（已完成，2026-03-25）
+## GitHub Pages + Cloudflare Pages 托管（已完成，2026-03-25/26）
 - `git_push.py`：自动将 HTML 复制到 docs/index.html + docs/archive/，然后 git add/commit/push
 - `main.py` 默认启用 push，离线使用加 `--no-push`
 - `.gitignore` 排除 config.yaml、output PNG/HTML、pycache
-- GitHub Pages 设置：Branch=main, 目录=/docs
-- 访问地址：https://用户名.github.io/stock-multi-period-big/
+- GitHub Pages 设置：Branch=main, 目录=/docs，地址：https://wx2000.github.io/stock-multi-period-big/
+- Cloudflare Pages：绑定同一 GitHub 仓库，Build output=docs，地址：https://stock-multi-period-big.pages.dev（国内访问更快）
+- 企业微信通知链接已更新为 Cloudflare Pages 地址
