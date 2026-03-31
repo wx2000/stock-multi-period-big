@@ -11,7 +11,24 @@ import re
 import sys
 
 from data_fetcher import fetch_stock_data
-from chart_generator import generate_charts_batch, OUTPUT_DIR
+
+# 根据 --layout 参数动态导入生成器模块
+# 初始化时默认导入方案A
+_chart_module = None
+
+def _get_chart_module(layout: str = "A"):
+    """动态导入图表生成模块（A或B方案）"""
+    global _chart_module
+    if layout == "B":
+        import chart_generator_b as module
+    else:
+        import chart_generator as module
+    _chart_module = module
+    return module
+
+# 初始先导入方案A
+from chart_generator import OUTPUT_DIR
+_chart_module = __import__("chart_generator")
 
 
 # ── 默认股票列表（可编辑 stocks.txt 替换）──────────────────────
@@ -225,6 +242,14 @@ def main():
     pages_group.add_argument("--no-push", dest="no_push", action="store_true",
                               help="跳过 git push，不更新 GitHub Pages（离线使用时加此参数）")
 
+    layout_group = parser.add_argument_group("布局方案（可选）")
+    layout_group.add_argument("--layout", type=str, choices=["A", "B"], default="A",
+                              help="选择布局方案: A=2×3(6周期),B=2×2(4周期, 默认=A)")
+
+    offline_group = parser.add_argument_group("离线模式（可选）")
+    offline_group.add_argument("--offline", action="store_true",
+                              help="离线模式：仅从本地缓存读取数据，不发起网络请求")
+
     args = parser.parse_args()
 
     # ── 加载通知配置 ──────────────────────────────────────────
@@ -237,6 +262,12 @@ def main():
         print(f"[通知] 已启用渠道: {[n for n, _ in notifiers]}")
     elif args.notify or args.wecom or args.feishu:
         print("[通知] 未找到有效的通知配置")
+
+    # ── 根据 --layout 参数加载对应的图表生成模块 ────────────────
+    layout = args.layout.upper()
+    chart_module = _get_chart_module(layout)
+    generate_charts_batch = chart_module.generate_charts_batch
+    print(f"[布局] 使用方案{layout}（{'2×3, 6周期' if layout == 'A' else '2×2, 4周期'}）")
 
     # ══════════════════════════════════════════════════════════
     #  --send_only 模式：跳过数据获取，直接发送
@@ -311,7 +342,7 @@ def main():
     all_data = []
     for code in codes:
         try:
-            data = fetch_stock_data(code)
+            data = fetch_stock_data(code, offline=args.offline)
             all_data.append(data)
         except Exception as e:
             print(f"[错误] 获取 {code} 数据失败: {e}")

@@ -6,6 +6,9 @@ output/*.png
 output/report_*.html
 output/
 
+# ── 本地缓存（K线数据缓存）──
+.cache/
+
 # ── Python 编译缓存 ──
 __pycache__/
 *.pyc
