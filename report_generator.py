@@ -183,7 +183,7 @@ def _build_market_html(market_data: dict) -> str:
     var ctx = canvas.getContext('2d');
     ctx.clearRect(0, 0, W, H);
 
-    var PAD_L = 54, PAD_R = 18, PAD_T = 18, PAD_B = 38;
+    var PAD_L = 54, PAD_R = 52, PAD_T = 18, PAD_B = 38;
     var cW = W - PAD_L - PAD_R;
     var cH = H - PAD_T - PAD_B;
 
@@ -215,6 +215,29 @@ def _build_market_html(market_data: dict) -> str:
       ctx.textAlign = 'right';
       ctx.fillText(label, PAD_L - 4, gy + 3.5);
     }}
+
+    // ── 基准线（红色虚线）──
+    var baselines = [
+      {{ value: 19000, label: '1.9万亿' }},
+      {{ value: 30000, label: '3万亿'   }}
+    ];
+    ctx.save();
+    ctx.strokeStyle = '#ff4444';
+    ctx.lineWidth   = 1.5;
+    ctx.setLineDash([6, 4]);
+    ctx.font        = 'bold 10px Microsoft YaHei, sans-serif';
+    ctx.fillStyle   = '#ff4444';
+    baselines.forEach(function(bl) {{
+      if (bl.value < lo || bl.value > hi) return;
+      var by = yOf(bl.value);
+      ctx.beginPath();
+      ctx.moveTo(PAD_L, by);
+      ctx.lineTo(PAD_L + cW, by);
+      ctx.stroke();
+      ctx.textAlign = 'left';
+      ctx.fillText(bl.label, PAD_L + cW + 2, by + 3.5);
+    }});
+    ctx.restore();
 
     // ── 渐变填充 ──
     var grad = ctx.createLinearGradient(0, PAD_T, 0, PAD_T + cH);
